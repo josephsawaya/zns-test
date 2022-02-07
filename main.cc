@@ -9,6 +9,7 @@ void test_write(int fd, blk_zone_report* hdr){
     }
     size_t ret = pwrite(fd, buf, block_size, hdr->zones[0].wp);
     if (ret != 4096) std::cout << "ERROR WITH TEST_WRITE" << std::endl;
+    else std::cout << "WROTE " << ret << std::endl;
 }
 
 blk_zone_report* get_zone_report(int fd){ 
