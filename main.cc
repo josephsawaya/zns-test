@@ -1,15 +1,20 @@
 #include "main.h"
 
 void test_write(int fd, blk_zone_report* hdr){
+    int initial_wp = hdr->zones[0].wp * 512;
     int block_size = 4096;
+    int num = 1025;
+    int buffer_size = block_size * num;
     const char* alphabet = "abcdefghijklmnopqrstuvwxyz";
-    char buf[block_size];
+    char* buf = (char*)malloc(sizeof(char) * buffer_size);
     for(int i = 0; i < block_size; i++){
         buf[i] = alphabet[i % 26];
     }
-    size_t ret = pwrite(fd, buf, block_size, hdr->zones[0].wp);
-    if (ret != 4096) std::cout << "ERROR WITH TEST_WRITE" << std::endl;
-    else std::cout << "WROTE " << ret << std::endl;
+    for(int i = 0; i < num; i++){
+        size_t ret = pwrite(fd, buf, block_size, initial_wp + i * block_size);
+        buf += block_size;
+        std::cout << "WROTE " << ret << " at " << (initial_wp + i * block_size) << std::endl;
+    }
 }
 
 blk_zone_report* get_zone_report(int fd){ 
@@ -66,5 +71,6 @@ int main (int argc, char* argv[]) {
     std::cout << "Size of one zone: " << zone_size << std::endl;
     blk_zone_report* hdr = get_zone_report(fd);
     test_write(fd, hdr);
+    free(hdr);
 }
 
