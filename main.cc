@@ -1,4 +1,3 @@
-#include "main.h"
 #include <errno.h>
 #include <string.h>
 #include <malloc.h>
@@ -7,6 +6,7 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
+#include <sys/uio.h>
 
 void test_write(int fd, blk_zone_report* hdr){
     int initial_wp = hdr->zones[0].wp * 512;
@@ -14,10 +14,15 @@ void test_write(int fd, blk_zone_report* hdr){
     int num = 254;
     int buffer_size = block_size * num;
     const char* alphabet = "abcdefghijklmnopqrstuvwxyz";
-    char* buf = (char*) memalign(block_size, sizeof(char) * buffer_size);
-    for(int i = 0; i < buffer_size; i++){
-        buf[i] = alphabet[i % 26];
-    }
+    iovec* bl = (iovec*) malloc(sizeof(iovec) * 2);
+    for(int i = 0; i < 2; i++) {
+        char* buf = (char*) memalign(block_size, sizeof(char) * buffer_size);
+        for(int i = 0; i < buffer_size; i++){
+            buf[i] = alphabet[i % 26];
+        }
+        bl[i].iov_base = (void*)buf;
+        bl[i].iov_len = sizeof(char) * buffer_size;
+    } 
     //for(int i = 0; i < num; i++){
         //ssize_t ret = pwrite(fd, buf, block_size, initial_wp + i * block_size);
 	//fsync(fd);
@@ -28,7 +33,7 @@ void test_write(int fd, blk_zone_report* hdr){
 	    //return
 	//}
     //}
-    ssize_t ret = pwrite(fd, buf, buffer_size, initial_wp);
+    ssize_t ret = pwritev(fd, bl, 2, initial_wp);
     if (ret < 0) {
         std::cout << strerror(errno) << std::endl;
         return;
