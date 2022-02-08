@@ -1,20 +1,39 @@
 #include "main.h"
+#include <errno.h>
+#include <string.h>
+#include <malloc.h>
+#include <linux/blkzoned.h>
+#include <iostream>
+#include <fcntl.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
 
 void test_write(int fd, blk_zone_report* hdr){
     int initial_wp = hdr->zones[0].wp * 512;
-    int block_size = 4096;
-    int num = 1025;
+    int block_size = 1024 * 4;
+    int num = 254;
     int buffer_size = block_size * num;
     const char* alphabet = "abcdefghijklmnopqrstuvwxyz";
-    char* buf = (char*)malloc(sizeof(char) * buffer_size);
-    for(int i = 0; i < block_size; i++){
+    char* buf = (char*) memalign(block_size, sizeof(char) * buffer_size);
+    for(int i = 0; i < buffer_size; i++){
         buf[i] = alphabet[i % 26];
     }
-    for(int i = 0; i < num; i++){
-        size_t ret = pwrite(fd, buf, block_size, initial_wp + i * block_size);
-        buf += block_size;
-        std::cout << "WROTE " << ret << " at " << (initial_wp + i * block_size) << std::endl;
+    //for(int i = 0; i < num; i++){
+        //ssize_t ret = pwrite(fd, buf, block_size, initial_wp + i * block_size);
+	//fsync(fd);
+        //buf += block_size;
+        //std::cout << "WROTE " << ret << " at " << (initial_wp + i * block_size) << std::endl;
+    	//if (ret < 0) {
+	    //std::cout << strerror(errno) << std::endl;
+	    //return
+	//}
+    //}
+    ssize_t ret = pwrite(fd, buf, buffer_size, initial_wp);
+    if (ret < 0) {
+        std::cout << strerror(errno) << std::endl;
+        return;
     }
+
 }
 
 blk_zone_report* get_zone_report(int fd){ 
@@ -60,7 +79,7 @@ int main (int argc, char* argv[]) {
         return 1;
     }
     char* dev_name = argv[1];
-    int fd = open(argv[1], O_RDWR);
+    int fd = open(argv[1], O_RDWR | O_DIRECT);
     uint32_t zone_size;
     int ret;
     ret = ioctl(fd, BLKGETZONESZ, &zone_size);
@@ -73,4 +92,3 @@ int main (int argc, char* argv[]) {
     test_write(fd, hdr);
     free(hdr);
 }
-
