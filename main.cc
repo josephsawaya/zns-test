@@ -8,14 +8,13 @@
 #include <unistd.h>
 #include <sys/uio.h>
 
-void test_write(int fd, blk_zone_report* hdr){
+void test_write(int fd, blk_zone_report* hdr, int num_of_blocks, int num_of_iovecs){
     int initial_wp = hdr->zones[0].wp * 512;
     int block_size = 1024 * 4;
-    int num = 254;
-    int buffer_size = block_size * num;
+    int buffer_size = block_size * num_of_blocks;
     const char* alphabet = "abcdefghijklmnopqrstuvwxyz";
-    iovec* bl = (iovec*) malloc(sizeof(iovec) * 2);
-    for(int i = 0; i < 2; i++) {
+    iovec* bl = (iovec*) malloc(sizeof(iovec) * num_of_iovecs);
+    for(int i = 0; i < num_of_iovecs; i++) {
         char* buf = (char*) memalign(block_size, sizeof(char) * buffer_size);
         for(int i = 0; i < buffer_size; i++){
             buf[i] = alphabet[i % 26];
@@ -33,7 +32,8 @@ void test_write(int fd, blk_zone_report* hdr){
 	    //return
 	//}
     //}
-    ssize_t ret = pwritev(fd, bl, 2, initial_wp);
+    ssize_t ret = pwritev(fd, bl, num_of_iovecs, initial_wp);
+    std::cout << ret << std::endl;
     if (ret < 0) {
         std::cout << strerror(errno) << std::endl;
         return;
@@ -79,11 +79,13 @@ blk_zone_report* get_zone_report(int fd){
 }
 
 int main (int argc, char* argv[]) {
-    if (argc < 2) {
+    if (argc < 4) {
         std::cout << "not enough args" << std::endl;
         return 1;
     }
     char* dev_name = argv[1];
+    int num_of_blocks = atoi(argv[2]);
+    int num_of_iovecs = atoi(argv[3]);
     int fd = open(argv[1], O_RDWR | O_DIRECT);
     uint32_t zone_size;
     int ret;
@@ -94,6 +96,6 @@ int main (int argc, char* argv[]) {
     }
     std::cout << "Size of one zone: " << zone_size << std::endl;
     blk_zone_report* hdr = get_zone_report(fd);
-    test_write(fd, hdr);
+    test_write(fd, hdr, num_of_blocks, num_of_iovecs);
     free(hdr);
 }
